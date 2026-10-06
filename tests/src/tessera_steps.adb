@@ -1,4 +1,5 @@
 with Tessera_Steps.Holding;
+with Tessera_Steps.Opening;
 
 package body Tessera_Steps is
 
@@ -28,10 +29,12 @@ package body Tessera_Steps is
    end record;
 
    Holding_Name : aliased constant String := "holding";
+   Opening_Name : aliased constant String := "opening";
 
    --!format off
    Regions : constant array (Positive range <>) of Region :=
-     [(Holding_Name'Access, Holding.Offer'Access, Holding.Reset'Access, Holding.Phase'Access)];
+     [(Holding_Name'Access, Holding.Offer'Access, Holding.Reset'Access, Holding.Phase'Access),
+      (Opening_Name'Access, Opening.Offer'Access, Opening.Reset'Access, Opening.Phase'Access)];
    --!format on
 
    --  Every region's state, for the step no region would take.

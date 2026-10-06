@@ -22,6 +22,46 @@ is
 
    type Bytes is array (Buffer_Index range <>) of Byte;
 
+   --  The most columns a file may have, and a column's number in it.
+   Max_Columns : constant := 256;
+
+   subtype Column_Count is Natural range 0 .. Max_Columns;
+   subtype Column_Number is Column_Count range 1 .. Max_Columns;
+
+   --  Why a file, or a column of it, is not read: a fault in the file, or
+   --  a feature outside the subset tessera reads.
+   type Refusal is
+     (Not_Parquet,
+      Truncated,
+      Corrupt_Footer,
+      Nested_Schema,
+      Unsupported_Codec,
+      Unsupported_Encoding,
+      Unsupported_Type,
+      Encrypted,
+      Too_Large);
+
+   --  What a decoder made of its input: Ok, or the refusal, the column it
+   --  concerns (0 for the whole file) and the offending value from the
+   --  file when there is one (Valued).
+   type Outcome is record
+      Ok     : Boolean := True;
+      Why    : Refusal := Refusal'First;
+      Column : Column_Count := 0;
+      Value  : Interfaces.Integer_64 := 0;
+      Valued : Boolean := False;
+   end record;
+
+   Done : constant Outcome := (others => <>);
+
+   function Refused (Why : Refusal; Column : Column_Count := 0) return Outcome
+   is ((Ok => False, Why => Why, Column => Column, others => <>));
+
+   function Refused_With
+     (Why : Refusal; Column : Column_Count; Value : Interfaces.Integer_64)
+      return Outcome
+   is ((False, Why, Column, Value, Valued => True));
+
    --  The byte Offset places past Input's first.
    function Byte_At (Input : Bytes; Offset : Buffer_Count) return Byte
    is (Input (Input'First + Offset))

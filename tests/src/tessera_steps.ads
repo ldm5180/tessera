@@ -13,7 +13,17 @@ package Tessera_Steps is
 
    --  The steps.  Each is an event of one feature's state machine, in
    --  its own child package.
-   type Step_Kind is (E_Hold_File);
+   type Step_Kind is
+     (E_Hold_File,
+      E_Open,
+      E_Check_Opens,
+      E_Check_Columns,
+      E_Check_Counts,
+      E_Check_Group_Rows,
+      E_Check_Nullable,
+      --  An event no pattern names: an open posts it, and the next row's
+      --  guard reads whether the file opened.
+      E_Open_Settled);
 
    type Hook_Kind is (Fresh_World);
 
@@ -47,7 +57,16 @@ package Tessera_Steps is
 
    --!format off
    Step_Defs : constant Steps.Step_Table :=
-     [Step ("the file {word}")               >= E_Hold_File];
+     [Step ("the file {word}")               >= E_Hold_File,
+      Step ("the file is opened")            >= E_Open,
+      Step ("the file is open")              >= E_Check_Opens,
+      Step ("its columns are:")              >= E_Check_Columns,
+      Step ("it has {int} rows in {int} row group(s)")
+                                             >= E_Check_Counts,
+      Step ("row group {int} has {int} rows")
+                                             >= E_Check_Group_Rows,
+      Step ("the column {word} may hold nulls")
+                                             >= E_Check_Nullable];
    --!format on
 
    Hook_Defs : constant Steps.Hook_Table := [Before >= Fresh_World];
