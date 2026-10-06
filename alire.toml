@@ -1,0 +1,68 @@
+name = "tessera"
+description = "Narrow Parquet reading: the flat-table subset pyarrow writes, SPARK core"
+version = "0.1.0"
+
+authors = ["Lenny Maiorani"]
+maintainers = ["Lenny Maiorani <639247+ldm5180@users.noreply.github.com>"]
+maintainers-logins = ["ldm5180"]
+licenses = "MIT"
+website = "https://github.com/ldm5180/tessera"
+tags = ["parquet", "columnar", "reader", "spark"]
+
+project-files = ["tessera.gpr"]
+
+[[depends-on]]
+sml = "*"
+aunit = "^26.0.0"
+fabula = "*"
+
+#  sml, the state-machine engine the decoders that walk states are
+#  written on, is the one dependency the library itself needs: a pure
+#  SPARK crate, no IO, no C.  It is not in the community index; pin it to
+#  an exact commit so a build is reproducible from this file alone, and
+#  keep proof/proof.gpr's source directory on the same commit.
+[[pins]]
+sml = { url = "https://github.com/ldm5180/sml-ada.git", commit = "3ccd0e4bf51685ebd832383c12166e795473a037" }
+#  fabula, the Gherkin runner the features under tests/features/ run on,
+#  is a TEST dependency and not in the community index either.  Pinned by
+#  commit like sml, and its own sml pin must equal the one above: alr
+#  refuses two links to one crate at different commits.
+fabula = { url = "https://github.com/ldm5180/fabula.git", commit = "746a234df5581c2e38c4202aeee8b07473fb6a51" }
+
+[build-switches]
+"*".ada_version = "Ada2022"
+
+#  `alr test` runs actions with an empty GPR_PROJECT_PATH, so each wraps its
+#  command in `alr exec --` to pick up the toolchain, sml and AUnit.
+#  Argv-only actions (no `sh -c`, no `&&`) so this runs on Windows too; the
+#  runner exits non-zero on any failing assertion, so a failure fails the
+#  job.  The suite is built and run in both optimization modes (release -O3,
+#  debug -O0), selected by the MODE external (sml-ada convention), so the
+#  library is exercised at each -O level.
+[[actions]]
+type = "test"
+command = ["alr", "exec", "--", "gprbuild", "-p", "-j0", "-XMODE=release", "-P", "tests/test_tessera.gpr"]
+
+[[actions]]
+type = "test"
+command = ["alr", "exec", "--", "tests/bin/release/test_runner"]
+
+[[actions]]
+type = "test"
+command = ["alr", "exec", "--", "gprbuild", "-p", "-j0", "-XMODE=debug", "-P", "tests/test_tessera.gpr"]
+
+[[actions]]
+type = "test"
+command = ["alr", "exec", "--", "tests/bin/debug/test_runner"]
+
+#  The Gherkin features, after the suite: each gprbuild above already
+#  built tessera_features beside test_runner.  fabula exits 1 on any
+#  failed or undefined scenario; `make features` also checks the summary
+#  line, since a missing path or an empty file exits 0 by design.
+[[actions]]
+type = "test"
+command = ["alr", "exec", "--", "tests/bin/release/tessera_features", "tests/features"]
+
+[[actions]]
+type = "test"
+command = ["alr", "exec", "--", "tests/bin/debug/tessera_features", "tests/features"]

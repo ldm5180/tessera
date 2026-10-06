@@ -1,0 +1,37 @@
+with "aunit";
+with "fabula";
+with "../tessera.gpr";
+
+--  The AUnit suite for tessera.  Mirrors sml-ada's test crate: the MODE
+--  external selects -O3/-O0 with per-mode object and exec dirs, so the suite
+--  can be built and run in both optimization modes without a clean between.
+project Test_Tessera is
+
+   type Mode_Type is ("release", "debug");
+   Mode : Mode_Type := external ("MODE", "debug");
+
+   for Source_Dirs use ("src");
+   for Object_Dir use "obj/" & Mode;
+   for Exec_Dir use "bin/" & Mode;
+   for Create_Missing_Dirs use "True";
+   --  Two mains: the AUnit suite, and the Gherkin runner over
+   --  tests/features/ (a generic instantiation, so a spec).
+   for Main use ("test_runner.adb", "tessera_features.ads");
+
+   package Compiler is
+      Common := ("-g", "-gnata", "-gnatwa", "-gnatwe", "-gnat2022");
+
+      case Mode is
+         when "release" =>
+            for Default_Switches ("Ada") use Common & ("-O3");
+
+         when "debug" =>
+            for Default_Switches ("Ada") use Common & ("-O0");
+      end case;
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-Es"); --  Symbolic traceback.
+   end Binder;
+
+end Test_Tessera;

@@ -1,0 +1,22 @@
+--  SPARK proof target.  Not built by `alr build`; analysed with
+--  `alr exec -- gnatprove -P proof/proof.gpr`.
+--
+--  Sources the SPARK core directly (rather than withing tessera.gpr)
+--  because the Alire-generated config gpr withs every dependency's
+--  project, which would drag the test crates (AUnit, fabula) into the
+--  proof tree.  This tree is exactly the proof harnesses + src/core +
+--  the sml engine the core's machines instantiate, sourced from the
+--  Alire pin cache that `alr build` populates (CI has no sibling
+--  checkout).  The directory name carries the pinned commit's short sha,
+--  so bumping the sml pin in alire.toml means moving it here too.
+project Proof is
+
+   for Source_Dirs use
+     ("src", "../src/core", "../alire/cache/pins/sml_3ccd0e4b/src");
+   for Object_Dir use "obj";
+
+   package Compiler is
+      for Default_Switches ("Ada") use ("-gnat2022", "-gnata");
+   end Compiler;
+
+end Proof;

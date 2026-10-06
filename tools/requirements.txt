@@ -1,0 +1,4 @@
+# The versions tests/data/ was written with: tools/make_fixtures.py
+# re-run with these writes the same bytes.
+pyarrow==20.0.0
+numpy==2.2.3
