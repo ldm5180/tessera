@@ -160,7 +160,11 @@ package body Tessera_Files_Tests is
             and then Ok_2
             and then Sum_1 = 57 * Passes
             and then Sum_2 = Sum_1,
-            "two tasks read the same rows");
+            "two tasks read the same rows:"
+            & Sum_1'Image
+            & Sum_2'Image
+            & Ok_1'Image
+            & Ok_2'Image);
       end;
    end Test_Two_Tasks;
 

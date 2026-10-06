@@ -46,7 +46,9 @@ package body Tessera.Files is
    begin
       Into := new Bytes (1 .. Length);
       Result := Done;
-      Open (Handle, In_File, Path);
+      --  Separate, not shared: another task may hold the same file open,
+      --  and GNAT refuses to reopen a shared one.
+      Open (Handle, In_File, Path, Form => "shared=no");
       Set_Index (Handle, Positive_Count (From + 1));
       declare
          Raw : Stream_Element_Array (1 .. Stream_Element_Offset (Length))
