@@ -432,37 +432,30 @@ is
       Into.Columns := Column;
    end Store_Leaf;
 
-   --  Element I of a schema: the root (whose child count is kept, to be
-   --  checked once every leaf is in), or a leaf.
-   procedure Take_Element
-     (Input    : Bytes;
-      C        : in out Cursor;
-      E        : Element;
-      I        : Positive;
-      Children : in out Integer_32;
-      Into     : in out Metadata)
-   with
-     Pre  => I <= Max_Columns + 1 and then Sound (C, Input),
-     Post => Sound (C, Input);
+   --  Leaf E as column Column, when its name lies within Input.
+   procedure Take_Leaf
+     (Input  : Bytes;
+      C      : in out Cursor;
+      E      : Element;
+      Column : Column_Number;
+      Into   : in out Metadata)
+   with Pre => Sound (C, Input), Post => Sound (C, Input);
 
-   procedure Take_Element
-     (Input    : Bytes;
-      C        : in out Cursor;
-      E        : Element;
-      I        : Positive;
-      Children : in out Integer_32;
-      Into     : in out Metadata) is
+   procedure Take_Leaf
+     (Input  : Bytes;
+      C      : in out Cursor;
+      E      : Element;
+      Column : Column_Number;
+      Into   : in out Metadata) is
    begin
       if not C.Ok then
          return;
-      elsif I = 1 then
-         Children := E.Children;
       elsif Inside (E.Name, Input) then
-         Store_Leaf (Input, C, E, I - 1, Into);
+         Store_Leaf (Input, C, E, Column, Into);
       else
-         Refuse (Into, C, Refused (Corrupt_Footer, I - 1));
+         Refuse (Into, C, Refused (Corrupt_Footer, Column));
       end if;
-   end Take_Element;
+   end Take_Leaf;
 
    --  The schema: a root whose children are every other element, each a
    --  leaf.  Element 1 is the root.  A leaf with children of its own names
@@ -491,7 +484,11 @@ is
          exit when not C.Ok or else I > Max_Columns + 1;
          E := (others => <>);
          Read_Element (Input, C, E);
-         Take_Element (Input, C, E, I, Children, Into);
+         if I = 1 then
+            Children := E.Children;
+         else
+            Take_Leaf (Input, C, E, I - 1, Into);
+         end if;
          pragma Loop_Invariant (Sound (C, Input));
       end loop;
       if C.Ok and then Children /= Integer_32 (Into.Columns) then

@@ -308,14 +308,14 @@ is
    end Move_Copy_Bytes;
 
    --  The move the machine asked for in Request, its bounds checked again
-   --  against the buffers themselves; Moved False when they do not hold.
+   --  against the buffers themselves; the cursor fails when they do not
+   --  hold.
    procedure Move
      (Input   : Bytes;
       C       : in out Cursor;
       Output  : in out Bytes;
       Request : Context;
-      Written : in out Buffer_Count;
-      Moved   : out Boolean)
+      Written : in out Buffer_Count)
    with
      Pre  => Sound (C, Input) and then Written <= Output'Length,
      Post => Sound (C, Input) and then Written <= Output'Length;
@@ -325,22 +325,20 @@ is
       C       : in out Cursor;
       Output  : in out Bytes;
       Request : Context;
-      Written : in out Buffer_Count;
-      Moved   : out Boolean)
+      Written : in out Buffer_Count)
    is
       Length : constant Buffer_Count := Request.Length;
    begin
-      Moved := False;
       if not C.Ok or else Length > Output'Length - Written then
-         return;
+         C.Ok := False;
       elsif Request.Pending = Move_Literal and then Length <= Left (C, Input)
       then
          Move_Literal_Bytes (Input, C, Output, Length, Written);
-         Moved := True;
       elsif Request.Pending = Move_Copy and then Request.Offset in 1 .. Written
       then
          Move_Copy_Bytes (Output, Length, Request.Offset, Written);
-         Moved := True;
+      else
+         C.Ok := False;
       end if;
    end Move;
 
@@ -375,7 +373,6 @@ is
       Evt     : Event;
       Written : Buffer_Count := 0;
       Handled : Boolean := True;
-      Moved   : Boolean;
    begin
       Read_Varint (Input, C, U);
       if not C.Ok or else U > Unsigned_64 (Output'Length) then
@@ -389,8 +386,8 @@ is
          if State_Of (M) = Tag then
             Next_Event (Input, C, Ctx, Evt);
          else
-            Move (Input, C, Output, Ctx, Written, Moved);
-            Evt := (Kind => (if Moved then E_Moved else E_Bad), others => <>);
+            Move (Input, C, Output, Ctx, Written);
+            Evt := (Kind => (if C.Ok then E_Moved else E_Bad), others => <>);
          end if;
          Ctx.Written := Written;
          Process_Event (M, Ctx, Evt, Handled);

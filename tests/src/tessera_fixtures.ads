@@ -16,11 +16,14 @@ package Tessera_Fixtures is
    procedure Footer_Of
      (File : Bytes; Meta : out Metadata_Access; Result : out Outcome);
 
+   --  A fixture opened: its bytes, its footer, and what opening it gave.
+   type Opened_File is record
+      File   : Bytes_Access;
+      Meta   : Metadata_Access;
+      Result : Outcome;
+   end record;
+
    --  Load and Footer_Of together.
-   procedure Open
-     (Name   : String;
-      File   : out Bytes_Access;
-      Meta   : out Metadata_Access;
-      Result : out Outcome);
+   function Open (Name : String) return Opened_File;
 
 end Tessera_Fixtures;

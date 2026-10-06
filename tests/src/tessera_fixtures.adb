@@ -46,14 +46,12 @@ package body Tessera_Fixtures is
       end if;
    end Footer_Of;
 
-   procedure Open
-     (Name   : String;
-      File   : out Bytes_Access;
-      Meta   : out Metadata_Access;
-      Result : out Outcome) is
+   function Open (Name : String) return Opened_File is
+      Opened : Opened_File;
    begin
-      File := Load (Name);
-      Footer_Of (File.all, Meta, Result);
+      Opened.File := Load (Name);
+      Footer_Of (Opened.File.all, Opened.Meta, Opened.Result);
+      return Opened;
    end Open;
 
 end Tessera_Fixtures;

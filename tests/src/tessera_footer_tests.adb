@@ -63,11 +63,10 @@ package body Tessera_Footer_Tests is
 
    procedure Test_Flat_Schema (T : in out AUnit.Test_Cases.Test_Case'Class) is
       pragma Unreferenced (T);
-      File   : Bytes_Access;
-      Meta   : Metadata_Access;
-      Result : Outcome;
+      Opened : constant Opened_File := Open ("flat.parquet");
+      Meta   : constant Metadata_Access := Opened.Meta;
+      Result : constant Outcome := Opened.Result;
    begin
-      Open ("flat.parquet", File, Meta, Result);
       Assert (Result.Ok, "flat.parquet decodes");
       Assert
         (Meta.Columns = 13 and then Meta.Rows = 10, "13 columns, 10 rows");
@@ -91,11 +90,9 @@ package body Tessera_Footer_Tests is
 
    procedure Test_Flat_Chunks (T : in out AUnit.Test_Cases.Test_Case'Class) is
       pragma Unreferenced (T);
-      File   : Bytes_Access;
-      Meta   : Metadata_Access;
-      Result : Outcome;
+      Opened : constant Opened_File := Open ("flat.parquet");
+      Meta   : constant Metadata_Access := Opened.Meta;
    begin
-      Open ("flat.parquet", File, Meta, Result);
       Assert (Meta.Groups = 1 and then Meta.Group (1).Rows = 10, "one group");
       Assert
         (not Meta.Group (1).Chunks (1).Has_Dictionary,
@@ -114,11 +111,10 @@ package body Tessera_Footer_Tests is
 
    procedure Test_Groups (T : in out AUnit.Test_Cases.Test_Case'Class) is
       pragma Unreferenced (T);
-      File   : Bytes_Access;
-      Meta   : Metadata_Access;
-      Result : Outcome;
+      Opened : constant Opened_File := Open ("groups.parquet");
+      Meta   : constant Metadata_Access := Opened.Meta;
+      Result : constant Outcome := Opened.Result;
    begin
-      Open ("groups.parquet", File, Meta, Result);
       Assert (Result.Ok and then Meta.Groups = 3, "three row groups");
       Assert
         ((for all G in 1 .. 3 => Meta.Group (G).Rows = 10),
@@ -130,11 +126,9 @@ package body Tessera_Footer_Tests is
 
    --  The refusal Name's footer earns.
    function Refusal_Of (Name : String) return Outcome is
-      File   : Bytes_Access;
-      Meta   : Metadata_Access;
-      Result : Outcome;
+      Opened : constant Opened_File := Open (Name);
+      Result : constant Outcome := Opened.Result;
    begin
-      Open (Name, File, Meta, Result);
       return Result;
    end Refusal_Of;
 
@@ -206,12 +200,12 @@ package body Tessera_Footer_Tests is
    procedure Test_Chunk_Outside (T : in out AUnit.Test_Cases.Test_Case'Class)
    is
       pragma Unreferenced (T);
-      File   : Bytes_Access;
-      Meta   : Metadata_Access;
-      Result : Outcome;
+      Opened : constant Opened_File := Open ("flat.parquet");
+      File   : constant Bytes_Access := Opened.File;
+      Meta   : constant Metadata_Access := Opened.Meta;
+      Result : Outcome := Opened.Result;
       Length : Buffer_Count;
    begin
-      Open ("flat.parquet", File, Meta, Result);
       Locate
         (File.all,
          File (File'Last - 7 .. File'Last),

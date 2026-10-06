@@ -13,12 +13,6 @@ package Tessera_World is
 
    --  The file last opened: its bytes, its footer, and what opening it
    --  gave.
-   type Opened_File is record
-      File   : Bytes_Access;
-      Meta   : Metadata_Access;
-      Result : Outcome;
-   end record;
-
    Opened : Opened_File;
 
    --  Opens the file at Path into Opened.

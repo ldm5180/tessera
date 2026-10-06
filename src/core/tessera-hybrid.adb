@@ -16,8 +16,10 @@ is
    function Ceiling (Width : Bit_Width) return Unsigned_64
    is (Shift_Left (1, Width) - 1);
 
-   --  Where the next value goes, as a count of those already decoded.
+   --  A decode under way: the width of its values, how many are wanted,
+   --  and how many are done, which is where the next one goes.
    type Progress is record
+      Width : Bit_Width := 0;
       Done  : Buffer_Count := 0;
       Count : Buffer_Count := 0;
    end record;
@@ -30,7 +32,6 @@ is
    procedure Repeated
      (Input  : Bytes;
       C      : in out Cursor;
-      Width  : Bit_Width;
       Length : Unsigned_64;
       Values : in out Codes;
       P      : in out Progress)
@@ -42,12 +43,12 @@ is
      Post =>
        Sound (C, Input)
        and then P.Count = P.Count'Old
+       and then P.Width = P.Width'Old
        and then P.Done in P.Done'Old .. P.Count;
 
    procedure Repeated
      (Input  : Bytes;
       C      : in out Cursor;
-      Width  : Bit_Width;
       Length : Unsigned_64;
       Values : in out Codes;
       P      : in out Progress)
@@ -56,12 +57,12 @@ is
       B     : Byte;
       Take  : Buffer_Count;
    begin
-      for K in 0 .. Byte_Width (Width) - 1 loop
+      for K in 0 .. Byte_Width (P.Width) - 1 loop
          Read_Byte (Input, C, B);
          Value := Value or Shift_Left (Unsigned_64 (B), Byte_Bits * K);
          pragma Loop_Invariant (Sound (C, Input) and then Value < 2**32);
       end loop;
-      if not C.Ok or else Value > Ceiling (Width) then
+      if not C.Ok or else Value > Ceiling (P.Width) then
          C.Ok := False;
          return;
       end if;
@@ -113,7 +114,6 @@ is
    procedure Packed
      (Input  : Bytes;
       C      : in out Cursor;
-      Width  : Bit_Width;
       Groups : Unsigned_64;
       Values : in out Codes;
       P      : in out Progress)
@@ -125,12 +125,12 @@ is
      Post =>
        Sound (C, Input)
        and then P.Count = P.Count'Old
+       and then P.Width = P.Width'Old
        and then P.Done in P.Done'Old .. P.Count;
 
    procedure Packed
      (Input  : Bytes;
       C      : in out Cursor;
-      Width  : Bit_Width;
       Groups : Unsigned_64;
       Values : in out Codes;
       P      : in out Progress)
@@ -140,7 +140,7 @@ is
       Take  : constant Buffer_Count :=
         Buffer_Count (Unsigned_64'Min (Run, Unsigned_64 (Wanted (P))));
       Needs : constant Integer_64 :=
-        (Integer_64 (Take) * Integer_64 (Width) + Byte_Bits - 1) / Byte_Bits;
+        (Integer_64 (Take) * Integer_64 (P.Width) + Byte_Bits - 1) / Byte_Bits;
       Base  : constant Buffer_Count := C.Pos;
    begin
       if not C.Ok or else Needs > Integer_64 (Left (C, Input)) then
@@ -149,11 +149,11 @@ is
       end if;
       for K in 0 .. Take - 1 loop
          Values (Values'First + P.Done + K) :=
-           (if Width = 0
+           (if P.Width = 0
             then 0
             else
               Bits_At
-                (Input, Base, Integer_64 (K) * Integer_64 (Width), Width));
+                (Input, Base, Integer_64 (K) * Integer_64 (P.Width), P.Width));
       end loop;
       P.Done := P.Done + Take;
       C.Pos :=
@@ -162,7 +162,7 @@ is
             (Integer_64'Min
                (Integer_64 (Left (C, Input)),
                 Integer_64 (Unsigned_64'Min (Groups, Max_Buffer))
-                * Integer_64 (Width)));
+                * Integer_64 (P.Width)));
    end Packed;
 
    procedure Decode
@@ -173,7 +173,7 @@ is
       Result : out Outcome)
    is
       C      : Cursor;
-      P      : Progress := (Done => 0, Count => Count);
+      P      : Progress := (Width => Width, Done => 0, Count => Count);
       Header : Unsigned_64;
    begin
       for Run in 1 .. Input'Length loop
@@ -181,9 +181,9 @@ is
          Read_Varint (Input, C, Header);
          exit when not C.Ok;
          if Header mod 2 = 0 then
-            Repeated (Input, C, Width, Header / 2, Values, P);
+            Repeated (Input, C, Header / 2, Values, P);
          else
-            Packed (Input, C, Width, Header / 2, Values, P);
+            Packed (Input, C, Header / 2, Values, P);
          end if;
          pragma
            Loop_Invariant

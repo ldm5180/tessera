@@ -13,7 +13,7 @@ package body Tessera_World is
    procedure Open (Path : String) is
       Name : constant String := Ada.Directories.Simple_Name (Path);
    begin
-      Tessera_Fixtures.Open (Name, Opened.File, Opened.Meta, Opened.Result);
+      Opened := Tessera_Fixtures.Open (Name);
    end Open;
 
    function Type_Name (Kind : Physical_Type) return String
