@@ -33,6 +33,9 @@ package body Tessera_Files_Tests is
          "two columns, the second label");
       Assert (Find (F, "row") = 1 and then Find (F, "none") = 0, "find");
       Assert (Group_Rows (F, 4) = 0, "no fourth group");
+      Assert
+        (Chunk_Bytes (F, 1, 1) > 0 and then Chunk_Bytes (F, 4, 1) = 0,
+         "a chunk's bytes on disk; none past the groups");
       Close (F);
       Assert (not Is_Open (F) and then Rows (F) = 0, "closed");
       Open (Data & "missing.parquet", F, Result);

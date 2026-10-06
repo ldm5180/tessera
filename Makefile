@@ -10,8 +10,10 @@ TESTS := -P tests/test_tessera.gpr
 SOURCES = $$(git ls-files 'src/*/*.ad[sb]' 'tests/src/*.ad[sb]' \
                          'proof/src/*.ad[sb]' 'bench/src/*.ad[sb]')
 
+BENCH := -P bench/bench.gpr
+
 .PHONY: all build test features features-report prove format validation \
-        no-float ci clean help
+        no-float bench bench-build ci clean help
 
 all: build
 
@@ -79,6 +81,8 @@ format:
 	  $$(git ls-files 'tests/src/*.ad[sb]')
 	alr exec -- gnatformat -P proof/proof.gpr --charset utf-8 --check \
 	  $$(git ls-files 'proof/src/*.ad[sb]')
+	alr exec -- gnatformat $(BENCH) --charset utf-8 --check \
+	  $$(git ls-files 'bench/src/*.ad[sb]')
 
 ## validation  The warnings-and-style-as-errors build CI runs: 79 columns,
 ##             `and then` in contracts, every warning an error
@@ -94,11 +98,26 @@ no-float:
 	  echo 'no-float: a floating-point type is named above'; exit 1; \
 	else echo 'no-float: no floating-point type in any source'; fi
 
+## bench       Read named columns of a local file and print rows, megabytes
+##             and seconds per column: make bench TESSERA_FILE=<path>
+##             [TESSERA_COLUMNS="a b c"] (every column when none is named).
+##             Real data stays outside the repository; CI only builds it
+bench: bench-build
+	@test -n "$(TESSERA_FILE)" || \
+	  { echo 'bench: make bench TESSERA_FILE=<path> [TESSERA_COLUMNS=...]'; \
+	    exit 2; }
+	alr exec -- bench/bin/tessera_bench "$(TESSERA_FILE)" $(TESSERA_COLUMNS)
+
+## bench-build Build the benchmark (release)
+bench-build:
+	alr exec -- gprbuild -p -j0 $(BENCH)
+
 ## ci          Every gate CI runs, cheapest first
-ci: no-float format validation test features prove
+ci: no-float format validation test features bench-build prove
 
 ## clean       Remove all build artifacts
 clean:
+	-alr exec -- gprclean -q $(BENCH)
 	-alr exec -- gprclean -q -XMODE=release $(TESTS)
 	-alr exec -- gprclean -q -XMODE=debug $(TESTS)
 	alr clean

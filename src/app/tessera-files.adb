@@ -178,6 +178,13 @@ package body Tessera.Files is
        then (others => <>)
        else F.Meta.Schema (Number));
 
+   function Chunk_Bytes
+     (F : File; Group : Positive; Number : Column_Number)
+      return Interfaces.Integer_64
+   is (if Group > Row_Groups (F) or else Number > Column_Total (F)
+       then 0
+       else F.Meta.Group (Group).Chunks (Number).Compressed_Size);
+
    function Find (F : File; Name : String) return Column_Count
    is (if F.Meta = null then 0 else Footer.Find (F.Meta.all, Name));
 

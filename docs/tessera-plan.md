@@ -1,7 +1,10 @@
 # tessera plan
 
-**Status (2026-10-06):** planned, nothing built.  Three iterations
-done (see Revision notes).
+**Status (2026-10-06):** T0-T9 built on `main` (iteration 4 in the
+Revision notes says what was built and where it differs from this
+text).  The 15 columns statera reads, and all 66, read from a real
+retrotester file with the footer's row counts, identical to pyarrow's
+values.
 
 tessera reads Apache Parquet files in Ada 2022, with a SPARK core:
 the subset of the format that flat tables written by pyarrow use,
@@ -335,6 +338,40 @@ end;
   row count matches the footer's.
 - **RED first:** `make bench` has no rule.
 - **Gates:** `make ci`.
+- **Recorded (2026-10-06):** `make bench` on
+  `202609-r/0930_112709_0dte_S_AIAO/All - 0dte_S_AIAO.parquet` (43 MB,
+  988,291 rows, 3 row groups, 66 columns, `parquet-cpp-arrow version
+  24.0.0`), release build, warm cache.  The list above names 15 columns,
+  not 14; all 15 exist under exactly these names in the footer, and
+  each read 988,291 rows, the footer's count:
+
+  | column | type | MB on disk | seconds |
+  |---|---|---|---|
+  | Strategy | BYTE_ARRAY | 0.00 | 0.008 |
+  | Position_Name | BYTE_ARRAY | 0.07 | 0.012 |
+  | Tag | BYTE_ARRAY | 0.00 | 0.004 |
+  | Position_Type | BYTE_ARRAY | 0.01 | 0.006 |
+  | Entry_Date | INT32 (DATE) | 1.36 | 0.009 |
+  | Exit_Date | INT32 (DATE) | 1.36 | 0.008 |
+  | Entry_Time | INT64 (TIME, us) | 0.00 | 0.005 |
+  | Expiration | INT32 (DATE) | 1.36 | 0.008 |
+  | Profit | DOUBLE | 1.69 | 0.013 |
+  | Entry_Price | FLOAT | 1.31 | 0.009 |
+  | Spread_Width_Put | FLOAT | 0.35 | 0.011 |
+  | Spread_Width_Call | FLOAT | 0.28 | 0.011 |
+  | SPX_Entry | FLOAT | 1.03 | 0.014 |
+  | VIX_Open | FLOAT | 0.54 | 0.008 |
+  | Custom_Column | BYTE_ARRAY | 0.83 | 0.007 |
+
+  All 66 columns read in 0.66 s wall clock for the whole run, 27 MB
+  peak resident.  A throwaway check outside the repository compared, for
+  the 15 columns, null counts and a digest of every value (sums of the
+  integers and bit patterns, a hash and the byte length of the strings)
+  with pyarrow's: identical.  `Custom_Column` does not fall back to plain
+  values in this file: each row group's chunk is one dictionary page of
+  321 entries and 18 RLE_DICTIONARY data pages of 20,000 values (the
+  benchmark reports 963 dictionary entries and 0 plain values added),
+  and no data page of any column in the file is PLAIN.
 
 ## 4. Features
 
@@ -373,3 +410,65 @@ end;
   Not verified: that a string column in the real files falls back
   to plain values mid-chunk (`Custom_Column` has 137,000 distinct
   values and may); `fallback.parquet` covers the case either way.
+- **Iteration 4 (as built, 2026-10-06):** T0-T9 built, each item one
+  or more TDD cycles.  Where the build differs from the text above, and
+  why:
+  - *Measured on the real file (T9):* the column list names 15 columns,
+    not 14.  In `All - 0dte_S_AIAO.parquet` `Custom_Column` has 321
+    distinct values a row group and never falls back to plain values;
+    the 137,000 figure was not reproduced there (it may belong to the
+    other, 4.1-million-row file, which was not opened).  The fallback
+    path is proved and tested on `fallback.parquet` alone.
+  - *Section 1.2, corrected against the specification:* type 3 (byte,
+    i8) is one raw byte, not a zigzag varint; only i16, i32 and i64 are
+    zigzag.  A boolean inside a list takes one byte (the field-header
+    trick applies to fields only).  Types 10 (set, laid out as a list)
+    and 11 (map: a varint size, then a byte of key and value types when
+    the size is not 0) exist and are skipped like the others.  A list
+    count is believed only when it is no more than the bytes left.
+  - *Section 1.3:* a chunk need not begin with a dictionary page.
+    pyarrow writes BOOLEAN columns with none (one PLAIN data page), and
+    a writer may set `dictionary_page_offset` to 0 to mean none; the
+    chunk machine accepts data pages straight from Start.  A chunk of no
+    rows may have no pages at all.  The plain fallback pages carry
+    encoding PLAIN in their data page header; pyarrow 20 also caps a
+    data page at 20,000 values, so a real chunk is a dictionary page and
+    many data pages.
+  - *Section 1.5:* the TIMESTAMP pyarrow writes for a naive timestamp
+    has a logical type and no converted type, so the logical type is
+    read first and the converted type only when there is none.  An
+    unsigned 32- or 64-bit value at or past 2**31 or 2**63 arrives as
+    its two's-complement pattern in the Integer_32 or Integer_64 (the
+    schema says the column is unsigned).
+  - *T2/T8 refusals:* a physical type outside the subset (INT96,
+    FIXED_LEN_BYTE_ARRAY), a codec, an encoding in a chunk's encodings
+    list, a nested schema and an encrypted file (`PARE`, or a plain
+    footer with `encryption_algorithm`, or encrypted chunk metadata) are
+    refused at Open; a page version, a page that cannot be read and an
+    annotation outside the subset are refused when the column is read.
+    The `Refusal` enumeration gained two literals the list above lacks:
+    `No_Such_Row_Group` (a read past the row groups) and `Cannot_Read`
+    (the disk would not give the bytes); `Unsupported_Page_Version` names
+    index pages as well as version 2.  `Tessera.Names` (core, not in
+    section 2) names the codes a refusal carries.
+  - *Section 2, the consumer's view:* `Read_*` are procedures with an
+    access-typed out parameter and an Outcome, not functions returning a
+    column: a column of a million rows is megabytes, which belongs on
+    the heap rather than a task's secondary stack, and a function has no
+    second result to refuse with.  The caller frees each column with
+    `Free`.  `Tessera.Files.Column_Total` counts the columns (a function
+    named `Columns` would hide the package `Tessera.Columns`), and
+    `Chunk_Bytes` gives a chunk's size on disk, for the benchmark.
+  - *Dependencies:* the decoders that walk states are sml machines, so
+    `sml` (a pure SPARK crate, pinned to the commit fabula already pins)
+    is the library's one runtime dependency, not none as the brief for
+    the crate had it.  `proof/proof.gpr` withs nothing and sources the
+    sml pin directly.
+  - *Coded columns:* plain values after a fallback are added to the
+    dictionary through an open-addressed table, so a string's code is
+    the same before and after the fallback; the plan said only that they
+    are added.
+  - *Fixtures:* three added to T0's table for the refusals feature:
+    `decimal.parquet`, `int96.parquet`, `millis.parquet`.  No encrypted
+    fixture: pyarrow's encryption needs a key management setup, so the
+    two encrypted footers are built byte by byte in the unit tests.

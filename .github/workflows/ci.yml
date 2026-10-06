@@ -71,6 +71,11 @@ jobs:
         # scenario.  Both are fully offline.
         run: alr --non-interactive test
 
+      - name: Build the benchmark
+        # `make bench` needs a real file, which CI does not have; building
+        # it keeps it compiling.
+        run: make bench-build
+
       - name: Set up node for the living documentation
         if: success() || failure()
         uses: actions/setup-node@v7

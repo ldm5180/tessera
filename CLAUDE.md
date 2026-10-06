@@ -24,6 +24,10 @@ wire rules of the subset, is `docs/tessera-plan.md`.
 - `make validation` — `alr build --validation`: warnings and style as
   errors (79 columns, `and then` in contracts)
 - `make no-float` — fails on any floating-point type named in a source
+- `make bench TESSERA_FILE=<path> [TESSERA_COLUMNS="a b c"]` — read
+  named columns (every column when none is named) of a local file and
+  print rows, megabytes and seconds per column; `make bench-build` only
+  builds it (CI does that).  Real data never enters the repository
 - `make ci`       — every gate above, cheapest first
 - `python tools/make_fixtures.py` — rewrite `tests/data/` (pyarrow,
   seeded; versions in `tools/requirements.txt`).  CI never runs Python;
@@ -37,7 +41,11 @@ wire rules of the subset, is `docs/tessera-plan.md`.
   a chunk's page sequence) are sml machines whose actions write a
   request the driver executes; the inner loops are plain loops with
   contracts.
-- `src/app/`  — `Tessera.Files`, the one unit that touches the disk.
+- `src/app/`  — `Tessera.Files`, the one unit that touches the disk:
+  `Open`, then `Read_Truths`/`Read_Ints_32`/`Read_Ints_64`/
+  `Read_Bits_32`/`Read_Bits_64`/`Read_Coded` per row group and column,
+  each into a heap column the caller `Free`s.
+- `bench/` — the benchmark (`bench.gpr`, not part of the library).
 - `tests/` — AUnit suite (`test_tessera.gpr`, driver `test_runner.adb`)
   and the features: `tests/features/*.feature` run by
   `tessera_features.ads` (Fabula.Main over `Tessera_Steps`).  The steps

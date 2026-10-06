@@ -36,6 +36,12 @@ package Tessera.Files is
    function Column
      (F : File; Number : Column_Number) return Footer.Column_Info;
 
+   --  The bytes column Number's chunk in row group Group takes on disk;
+   --  0 when there is no such chunk.
+   function Chunk_Bytes
+     (F : File; Group : Positive; Number : Column_Number)
+      return Interfaces.Integer_64;
+
    --  The column named Name, or 0.
    function Find (F : File; Name : String) return Column_Count;
 
