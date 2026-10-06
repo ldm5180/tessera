@@ -1,6 +1,7 @@
 with AUnit.Test_Cases; use AUnit.Test_Cases;
 
 with Tessera_Footer_Tests;
+with Tessera_Hybrid_Tests;
 with Tessera_Snappy_Tests;
 with Tessera_Thrift_Read_Struct_Tests;
 with Tessera_Thrift_Tests;
@@ -16,6 +17,7 @@ package body Tessera_Suite is
         (Test_Case_Access'(new Tessera_Thrift_Read_Struct_Tests.Test));
       Result.Add_Test (Test_Case_Access'(new Tessera_Footer_Tests.Test));
       Result.Add_Test (Test_Case_Access'(new Tessera_Snappy_Tests.Test));
+      Result.Add_Test (Test_Case_Access'(new Tessera_Hybrid_Tests.Test));
       return Result;
    end Suite;
 

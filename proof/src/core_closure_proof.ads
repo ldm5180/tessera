@@ -1,5 +1,6 @@
 with Tessera;
 with Tessera.Footer;
+with Tessera.Hybrid;
 with Tessera.Snappy;
 with Tessera.Thrift;
 
