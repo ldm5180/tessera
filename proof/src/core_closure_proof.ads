@@ -1,5 +1,6 @@
 with Tessera;
 with Tessera.Footer;
+with Tessera.Snappy;
 with Tessera.Thrift;
 
 --  Withs every core unit so the whole SPARK closure is in gnatprove's

@@ -34,6 +34,7 @@ is
      (Not_Parquet,
       Truncated,
       Corrupt_Footer,
+      Corrupt_Page,
       Nested_Schema,
       Unsupported_Codec,
       Unsupported_Encoding,
