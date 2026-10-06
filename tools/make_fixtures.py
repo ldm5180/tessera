@@ -304,6 +304,25 @@ def main():
         column_encoding={"x": "DELTA_BINARY_PACKED"},
     )
 
+    cents = pa.table(
+        {"cents": pa.array([1, 2, 3], type=pa.decimal128(10, 2))}
+    )
+    refused(out, "decimal", "Unsupported_Type FIXED_LEN_BYTE_ARRAY", cents)
+    stamps = pa.table(
+        {"when": pa.array([0, 10**6], type=pa.timestamp("ns"))}
+    )
+    refused(
+        out,
+        "int96",
+        "Unsupported_Type INT96",
+        stamps,
+        use_deprecated_int96_timestamps=True,
+    )
+    millis = pa.table(
+        {"clock": pa.array([0, 1000], type=pa.time32("ms"))}
+    )
+    refused(out, "millis", "Unsupported_Type", millis)
+
     with open(flat_path, "rb") as f:
         whole = f.read()
     damaged(out, "truncated", "Truncated", whole[: len(whole) // 2])

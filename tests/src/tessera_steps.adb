@@ -1,6 +1,7 @@
 with Tessera_Steps.Holding;
 with Tessera_Steps.Opening;
 with Tessera_Steps.Reading;
+with Tessera_Steps.Refusing;
 
 package body Tessera_Steps is
 
@@ -29,15 +30,17 @@ package body Tessera_Steps is
       Phase : Phase_Access;
    end record;
 
-   Holding_Name : aliased constant String := "holding";
-   Opening_Name : aliased constant String := "opening";
-   Reading_Name : aliased constant String := "reading";
+   Holding_Name  : aliased constant String := "holding";
+   Opening_Name  : aliased constant String := "opening";
+   Reading_Name  : aliased constant String := "reading";
+   Refusing_Name : aliased constant String := "refusing";
 
    --!format off
    Regions : constant array (Positive range <>) of Region :=
      [(Holding_Name'Access, Holding.Offer'Access, Holding.Reset'Access, Holding.Phase'Access),
       (Opening_Name'Access, Opening.Offer'Access, Opening.Reset'Access, Opening.Phase'Access),
-      (Reading_Name'Access, Reading.Offer'Access, Reading.Reset'Access, Reading.Phase'Access)];
+      (Reading_Name'Access, Reading.Offer'Access, Reading.Reset'Access, Reading.Phase'Access),
+      (Refusing_Name'Access, Refusing.Offer'Access, Refusing.Reset'Access, Refusing.Phase'Access)];
    --!format on
 
    --  Every region's state, for the step no region would take.

@@ -4,7 +4,9 @@ with Fabula.Numbers;
 
 with Tessera;        use Tessera;
 with Tessera.Footer; use Tessera.Footer;
-with Tessera.Files;  use Tessera.Files;
+with Tessera.Files;
+with Tessera.Names;
+use Tessera.Files;
 with Tessera_World;  use Tessera_World;
 
 with Tessera_Steps.Flows;
@@ -108,12 +110,7 @@ package body Tessera_Steps.Opening is
    end Evaluate;
 
    function Refusal_Text return String
-   is (Opened.Why'Image
-       & " (column"
-       & Opened.Column'Image
-       & ", value"
-       & Opened.Value'Image
-       & ")");
+   is (Tessera.Names.Describe (Opened) & ", column" & Opened.Column'Image);
 
    function Column_Difference (Ctx : Step_Context) return String is
       K : constant Natural := First_Difference (Ctx);

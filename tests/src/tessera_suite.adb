@@ -4,6 +4,7 @@ with Tessera_Columns_Tests;
 with Tessera_Files_Tests;
 with Tessera_Footer_Tests;
 with Tessera_Hybrid_Tests;
+with Tessera_Names_Tests;
 with Tessera_Pages_Tests;
 with Tessera_Snappy_Tests;
 with Tessera_Thrift_Read_Struct_Tests;
@@ -24,6 +25,7 @@ package body Tessera_Suite is
       Result.Add_Test (Test_Case_Access'(new Tessera_Pages_Tests.Test));
       Result.Add_Test (Test_Case_Access'(new Tessera_Columns_Tests.Test));
       Result.Add_Test (Test_Case_Access'(new Tessera_Files_Tests.Test));
+      Result.Add_Test (Test_Case_Access'(new Tessera_Names_Tests.Test));
       return Result;
    end Suite;
 

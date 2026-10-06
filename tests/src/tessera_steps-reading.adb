@@ -2,6 +2,7 @@ with Fabula.Numbers;
 
 with Tessera;       use Tessera;
 with Tessera.Files;
+with Tessera.Names;
 with Tessera_World; use Tessera_World;
 
 with Tessera_Steps.Flows;
@@ -65,12 +66,9 @@ package body Tessera_Steps.Reading is
    end Evaluate;
 
    function Refusal_Text return String
-   is (Last_Read.Result.Why'Image
-       & " (column"
-       & Last_Read.Result.Column'Image
-       & ", value"
-       & Last_Read.Result.Value'Image
-       & ")");
+   is (Tessera.Names.Describe (Last_Read.Result)
+       & ", column"
+       & Last_Read.Result.Column'Image);
 
    function Difference_Text (Ctx : Step_Context) return String
    is ("row"

@@ -2,6 +2,7 @@ with Tessera;
 with Tessera.Columns;
 with Tessera.Footer;
 with Tessera.Hybrid;
+with Tessera.Names;
 with Tessera.Pages;
 with Tessera.Snappy;
 with Tessera.Thrift;

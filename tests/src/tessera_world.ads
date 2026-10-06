@@ -69,6 +69,10 @@ package Tessera_World is
    --  What First_Wrong_Column gave when every column was last read.
    Every_Read : Ada.Strings.Unbounded.Unbounded_String;
 
+   --  Opens the file at Path and reads every column of every row group:
+   --  the first refusal met, or Ok.
+   function Read_In_Full (Path : String) return Outcome;
+
    --  The Parquet name of a physical type: BOOLEAN, INT32, ...
    function Type_Name (Kind : Physical_Type) return String;
 

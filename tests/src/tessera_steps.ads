@@ -26,6 +26,9 @@ package Tessera_Steps is
       E_Check_Codes,
       E_Read_Every,
       E_Check_Every,
+      E_Read_Full,
+      E_Check_Refused,
+      E_Check_Refused_Column,
       --  An event no pattern names: an open posts it, and the next row's
       --  guard reads whether the file opened.
       E_Open_Settled,
@@ -81,7 +84,11 @@ package Tessera_Steps is
                                              >= E_Check_Codes,
       Step ("every column is read")          >= E_Read_Every,
       Step ("every value of every column is as written")
-                                             >= E_Check_Every];
+                                             >= E_Check_Every,
+      Step ("the file is read in full")      >= E_Read_Full,
+      Step ("it is refused as {}")           >= E_Check_Refused,
+      Step ("the refusal names the column {word}")
+                                             >= E_Check_Refused_Column];
    --!format on
 
    Hook_Defs : constant Steps.Hook_Table := [Before >= Fresh_World];

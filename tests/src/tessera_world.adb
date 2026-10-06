@@ -3,6 +3,7 @@ with Ada.Directories;
 with Interfaces; use Interfaces;
 
 with Tessera.Columns;
+with Tessera.Names;
 with Tessera_Expected; use Tessera_Expected;
 
 package body Tessera_World is
@@ -190,16 +191,35 @@ package body Tessera_World is
       return "";
    end First_Wrong_Column;
 
+   --  The first refusal among the chunks of row group G.
+   function Group_Refusal (G : Group_Number) return Outcome is
+      Read : Typed_Read;
+   begin
+      for K in 1 .. Column_Total (Open_File) loop
+         Read := Read_Typed (G, K);
+         if not Read.Result.Ok then
+            return Read.Result;
+         end if;
+      end loop;
+      return Done;
+   end Group_Refusal;
+
+   function Read_In_Full (Path : String) return Outcome is
+   begin
+      Open (Path);
+      if not Opened.Ok then
+         return Opened;
+      end if;
+      for G in 1 .. Row_Groups (Open_File) loop
+         if not Group_Refusal (G).Ok then
+            return Group_Refusal (G);
+         end if;
+      end loop;
+      return Done;
+   end Read_In_Full;
+
    function Type_Name (Kind : Physical_Type) return String
-   is (case Kind is
-         when Bool                 => "BOOLEAN",
-         when Int32                => "INT32",
-         when Int64                => "INT64",
-         when Int96                => "INT96",
-         when Float32              => "FLOAT",
-         when Float64              => "DOUBLE",
-         when Byte_Array           => "BYTE_ARRAY",
-         when Fixed_Len_Byte_Array => "FIXED_LEN_BYTE_ARRAY");
+   is (Tessera.Names.Physical_Name (Physical_Type'Pos (Kind)));
 
    --  The bit width an integer annotation names.
    function Width (Note : Annotation) return String
