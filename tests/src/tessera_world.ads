@@ -50,6 +50,7 @@ package Tessera_World is
    end record;
 
    Last_Read : Column_Read;
+   Last_Name : Ada.Strings.Unbounded.Unbounded_String;
 
    --  Reads the column Name, every row group of it, into Last_Read.
    procedure Read_Column (Name : String);
@@ -57,6 +58,13 @@ package Tessera_World is
    --  The first row (counting across row groups, from 1) of Last_Read
    --  whose value differs from Expected's column Name, or 0.
    function First_Difference (Name : String) return Natural;
+
+   --  Row Row of Last_Read (counting across row groups, from 1) as the
+   --  .expected.csv would write it; empty when there is no such row.
+   function Row_Text (Row : Positive) return String;
+
+   --  True when Last_Read holds rows and none of them a value.
+   function All_Null return Boolean;
 
    --  How many distinct codes the rows of Last_Read hold, summed over its
    --  row groups.

@@ -26,6 +26,9 @@ package Tessera_Steps is
       E_Check_Codes,
       E_Read_Every,
       E_Check_Every,
+      E_Check_Row,
+      E_Check_Null,
+      E_Check_All_Null,
       E_Read_Full,
       E_Check_Refused,
       E_Check_Refused_Column,
@@ -85,6 +88,10 @@ package Tessera_Steps is
       Step ("every column is read")          >= E_Read_Every,
       Step ("every value of every column is as written")
                                              >= E_Check_Every,
+      Step ("row {int} of {word} reads {string}")
+                                             >= E_Check_Row,
+      Step ("row {int} of {word} is null")   >= E_Check_Null,
+      Step ("every row of {word} is null")   >= E_Check_All_Null,
       Step ("the file is read in full")      >= E_Read_Full,
       Step ("it is refused as {}")           >= E_Check_Refused,
       Step ("the refusal names the column {word}")

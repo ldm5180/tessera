@@ -3,6 +3,7 @@ with Fabula.Numbers;
 with Tessera;       use Tessera;
 with Tessera.Files;
 with Tessera.Names;
+with Tessera_Expected;
 with Tessera_World; use Tessera_World;
 
 with Tessera_Steps.Flows;
@@ -22,7 +23,10 @@ package body Tessera_Steps.Reading is
       Read_Ok,
       Values_Match,
       Codes_Match,
-      All_Match);
+      All_Match,
+      Row_Reads,
+      Row_Is_Null,
+      Every_Null);
 
    type Action_Kind is
      (A_Nothing,
@@ -33,7 +37,8 @@ package body Tessera_Steps.Reading is
       A_Refuse_No_Column,
       A_Refuse_Refused,
       A_Refuse_Values,
-      A_Refuse_Codes);
+      A_Refuse_Codes,
+      A_Refuse_Row);
 
    Name_Capture  : constant := 1;
    Count_Capture : constant := 2;
@@ -44,6 +49,24 @@ package body Tessera_Steps.Reading is
    function Count_Asked (Ctx : Step_Context) return Integer
    is (Fabula.Numbers.Integer_Reads.Value_Or
          (Fabula.Args.Int (Ctx.A, Count_Capture), -1));
+
+   --  The captures of a row check: the row, the column, the text.
+   Row_Capture    : constant := 1;
+   Column_Capture : constant := 2;
+   Text_Capture   : constant := 3;
+
+   function Row_Asked (Ctx : Step_Context) return Positive
+   is (Positive'Max
+         (1,
+          Fabula.Numbers.Integer_Reads.Value_Or
+            (Fabula.Args.Int (Ctx.A, Row_Capture), 1)));
+
+   --  The column a step names, which must be the one last read.
+   function Is_Last (Ctx : Step_Context; Capture : Positive) return Boolean
+   is (Fabula.Args.Word (Ctx.A, Capture) = To_String (Last_Name));
+
+   function Row_Seen (Ctx : Step_Context) return String
+   is (Row_Text (Row_Asked (Ctx)));
 
    function Has_Column (Ctx : Step_Context) return Boolean
    is (Opening.Is_Open
@@ -60,6 +83,13 @@ package body Tessera_Steps.Reading is
            when Can_Read     => Has_Column (Ctx),
            when Is_Open      => Opening.Is_Open,
            when All_Match    => Length (Every_Read) = 0,
+           when Row_Reads    =>
+             Is_Last (Ctx, Column_Capture)
+             and then Row_Seen (Ctx) = Fabula.Args.Text (Ctx.A, Text_Capture),
+           when Row_Is_Null  =>
+             Is_Last (Ctx, Column_Capture)
+             and then Row_Seen (Ctx) = Tessera_Expected.Null_Text,
+           when Every_Null   => Is_Last (Ctx, Name_Capture) and then All_Null,
            when Read_Ok      => Last_Read.Result.Ok,
            when Values_Match => First_Difference (Name (Ctx)) = 0,
            when Codes_Match  => Distinct_Codes = Count_Asked (Ctx));
@@ -113,6 +143,14 @@ package body Tessera_Steps.Reading is
          when A_Refuse_Values    =>
             Fail (Ctx, Difference_Text (Ctx));
 
+         when A_Refuse_Row       =>
+            Fail
+              (Ctx,
+               "the column last read is "
+               & To_String (Last_Name)
+               & ", and the row reads "
+               & Row_Seen (Ctx));
+
          when A_Refuse_Codes     =>
             Fail (Ctx, "it holds" & Distinct_Codes'Image & " distinct codes");
       end case;
@@ -137,6 +175,9 @@ package body Tessera_Steps.Reading is
    Check_Codes  : constant Ev := (Kind => E_Check_Codes);
    Read_Every   : constant Ev := (Kind => E_Read_Every);
    Check_Every  : constant Ev := (Kind => E_Check_Every);
+   Check_Row    : constant Ev := (Kind => E_Check_Row);
+   Check_Null   : constant Ev := (Kind => E_Check_Null);
+   Check_Nulls  : constant Ev := (Kind => E_Check_All_Null);
 
    --!format off
    Table : constant Transition_Table :=
@@ -157,7 +198,13 @@ package body Tessera_Steps.Reading is
       Unread   + Read_Every   (Is_Open)      / A_Read_Every       >= All_Read,
       Unread   + Read_Every                  / A_Refuse_Not_Open  >= Unread,
       All_Read + Check_Every  (All_Match)                         >= All_Read,
-      All_Read + Check_Every                 / A_Refuse_Every     >= All_Read];
+      All_Read + Check_Every                 / A_Refuse_Every     >= All_Read,
+      Read     + Check_Row    (Row_Reads)                         >= Read,
+      Read     + Check_Row                   / A_Refuse_Row       >= Read,
+      Read     + Check_Null   (Row_Is_Null)                       >= Read,
+      Read     + Check_Null                  / A_Refuse_Row       >= Read,
+      Read     + Check_Nulls  (Every_Null)                        >= Read,
+      Read     + Check_Nulls                 / A_Refuse_Row       >= Read];
    --!format on
 
    Current : State := Unread;

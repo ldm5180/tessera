@@ -110,6 +110,7 @@ package body Tessera_World is
          end if;
       end loop;
       Last_Read := Read;
+      Last_Name := Ada.Strings.Unbounded.To_Unbounded_String (Name);
    end Read_Column;
 
    --  Row group G's chunk of the column last read.
@@ -131,6 +132,28 @@ package body Tessera_World is
       end loop;
       return 0;
    end Chunk_Difference;
+
+   function Row_Text (Row : Positive) return String is
+      Base : Natural := 0;
+   begin
+      for G in 1 .. Last_Read.Groups loop
+         if Row - Base in 1 .. Chunk (G).Rows and then Chunk (G).Result.Ok then
+            return Render (Chunk (G), Row - Base);
+         end if;
+         Base := Base + Chunk (G).Rows;
+      end loop;
+      return "";
+   end Row_Text;
+
+   function All_Null return Boolean is
+      Rows : Natural := 0;
+   begin
+      for G in 1 .. Last_Read.Groups loop
+         Rows := Rows + Chunk (G).Rows;
+      end loop;
+      return
+        Rows > 0 and then (for all R in 1 .. Rows => Row_Text (R) = Null_Text);
+   end All_Null;
 
    function First_Difference (Name : String) return Natural is
       Column : constant Natural := Column_Of (Expected, Name);
