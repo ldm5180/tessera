@@ -41,7 +41,11 @@ is
       Unsupported_Page_Version,
       Unsupported_Type,
       Encrypted,
-      Too_Large);
+      No_Such_Row_Group,
+      No_Such_Column,
+      Wrong_Type,
+      Too_Large,
+      Cannot_Read);
 
    --  What a decoder made of its input: Ok, or the refusal, the column it
    --  concerns (0 for the whole file) and the offending value from the

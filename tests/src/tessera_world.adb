@@ -1,95 +1,194 @@
 with Ada.Directories;
 
-with Tessera.Pages; use Tessera.Pages;
+with Interfaces; use Interfaces;
+
+with Tessera.Columns;
+with Tessera_Expected; use Tessera_Expected;
 
 package body Tessera_World is
 
+   function Data_Dir (Info : Fabula.Frames.Frame) return String is
+      use Ada.Directories;
+      Feature  : constant String := Fabula.Frames.Value (Info.File);
+      Features : constant String := Containing_Directory (Feature);
+   begin
+      return Containing_Directory (Features) & "/data";
+   end Data_Dir;
+
+   procedure Open (Path : String) is
+      use Ada.Directories;
+   begin
+      Tessera.Files.Open (Path, Open_File, Opened);
+      Expected :=
+        Load
+          (Containing_Directory (Path)
+           & "/"
+           & Base_Name (Path)
+           & ".expected.csv");
+   end Open;
+
+   --  Row group Group's chunk of column Number, through the Read_* its
+   --  physical type takes.
+   function Read_Typed
+     (Group : Group_Number; Number : Column_Number) return Typed_Read
+   is
+      Column : constant Column_Info :=
+        Tessera.Files.Column (Open_File, Number);
+      Name   : constant String := Name_Of (Column);
+      Read   : Typed_Read := (Column => Column, others => <>);
+   begin
+      Read.Rows := Group_Rows (Open_File, Group);
+      case Column.Kind is
+         when Bool    =>
+            Read_Truths (Open_File, Group, Name, Read.Truths, Read.Result);
+
+         when Int32   =>
+            Read_Ints_32 (Open_File, Group, Name, Read.Ints_4, Read.Result);
+
+         when Int64   =>
+            Read_Ints_64 (Open_File, Group, Name, Read.Ints_8, Read.Result);
+
+         when Float32 =>
+            Read_Bits_32 (Open_File, Group, Name, Read.Bits_4, Read.Result);
+
+         when Float64 =>
+            Read_Bits_64 (Open_File, Group, Name, Read.Bits_8, Read.Result);
+
+         when others  =>
+            Read_Coded (Open_File, Group, Name, Read.Coded, Read.Result);
+      end case;
+      return Read;
+   end Read_Typed;
+
+   --  An unsigned annotation's value, from the pattern it arrives as.
+   function Unsigned_Image (V : Integer_64) return String
+   is (Plain (Unsigned_64'Mod (V)'Image));
+
+   function Render_32 (Read : Typed_Read; Row : Positive) return String
+   is (if Read.Column.Note = Uint_32
+       then Unsigned_Image (Integer_64 (Read.Ints_4.Value (Row)) mod 2**32)
+       else Plain (Read.Ints_4.Value (Row)'Image));
+
+   function Render_64 (Read : Typed_Read; Row : Positive) return String
+   is (if Read.Column.Note = Uint_64
+       then Unsigned_Image (Read.Ints_8.Value (Row))
+       else Plain (Read.Ints_8.Value (Row)'Image));
+
+   --  Whether row Row of Read holds a value.
+   function Valid (Read : Typed_Read; Row : Positive) return Boolean
+   is (case Read.Column.Kind is
+         when Bool    => Read.Truths.Valid (Row),
+         when Int32   => Read.Ints_4.Valid (Row),
+         when Int64   => Read.Ints_8.Valid (Row),
+         when Float32 => Read.Bits_4.Valid (Row),
+         when Float64 => Read.Bits_8.Valid (Row),
+         when others  => Read.Coded.Valid (Row));
+
+   function Render (Read : Typed_Read; Row : Positive) return String
+   is (if not Valid (Read, Row)
+       then Null_Text
+       else
+         (case Read.Column.Kind is
+            when Bool    => Truth (Read.Truths.Value (Row)),
+            when Int32   => Render_32 (Read, Row),
+            when Int64   => Render_64 (Read, Row),
+            when Float32 => Hex (Unsigned_64 (Read.Bits_4.Value (Row)), 8),
+            when Float64 => Hex (Read.Bits_8.Value (Row), 16),
+            when others  =>
+              Tessera.Columns.Text (Read.Coded.all, Read.Coded.Code (Row))));
+
+   procedure Read_Column (Name : String) is
+      Number : constant Column_Count := Tessera.Files.Find (Open_File, Name);
+      Read   : Column_Read (Row_Groups (Open_File));
+   begin
+      for G in Read.Chunks'Range loop
+         exit when Number = 0;
+         Read.Chunks (G) := Read_Typed (G, Number);
+         if Read.Result.Ok then
+            Read.Result := Read.Chunks (G).Result;
+         end if;
+      end loop;
+      Last_Read := Read;
+   end Read_Column;
+
    --  Row group G's chunk of the column last read.
-   function Chunk (G : Group_Number) return Chunk_Read
+   function Chunk (G : Group_Number) return Typed_Read
    is (Last_Read.Chunks (G));
 
-   --  How many distinct codes the valid rows of Column hold.
-   function Distinct (Column : Text_Column) return Natural is
-      Seen  : array (1 .. Column.Entries) of Boolean := [others => False];
+   --  The first row of chunk G (from 1) that differs from row Base + R
+   --  of Expected's column Column; 0 when none does.
+   function Chunk_Difference
+     (G : Group_Number; Column : Natural; Base : Natural) return Natural is
+   begin
+      for R in 1 .. Chunk (G).Rows loop
+         if Column = 0
+           or else Base + R > Natural (Expected.Rows.Length)
+           or else Render (Chunk (G), R) /= Value (Expected, Base + R, Column)
+         then
+            return R;
+         end if;
+      end loop;
+      return 0;
+   end Chunk_Difference;
+
+   function First_Difference (Name : String) return Natural is
+      Column : constant Natural := Column_Of (Expected, Name);
+      Base   : Natural := 0;
+   begin
+      for G in 1 .. Last_Read.Groups loop
+         if not Chunk (G).Result.Ok
+           or else Chunk_Difference (G, Column, Base) > 0
+         then
+            return Base + Natural'Max (Chunk_Difference (G, Column, Base), 1);
+         end if;
+         Base := Base + Chunk (G).Rows;
+      end loop;
+      return (if Base = Natural (Expected.Rows.Length) then 0 else Base + 1);
+   end First_Difference;
+
+   --  How many distinct codes the valid rows of Coded hold.
+   function Distinct (Coded : Tessera.Columns.Coded) return Natural is
+      Seen  : array (1 .. Coded.Entries) of Boolean := [others => False];
       Count : Natural := 0;
    begin
-      for R in 1 .. Column.Rows loop
-         if Column.Valid (R)
-           and then Column.Code (R) in Seen'Range
-           and then not Seen (Column.Code (R))
+      for R in 1 .. Coded.Rows loop
+         if Coded.Valid (R)
+           and then Coded.Code (R) in Seen'Range
+           and then not Seen (Coded.Code (R))
          then
-            Seen (Column.Code (R)) := True;
+            Seen (Coded.Code (R)) := True;
             Count := Count + 1;
          end if;
       end loop;
       return Count;
    end Distinct;
 
-   function Data_Dir (Info : Fabula.Frames.Frame) return String is
-      use Ada.Directories;
-      File     : constant String := Fabula.Frames.Value (Info.File);
-      Features : constant String := Containing_Directory (File);
-   begin
-      return Containing_Directory (Features) & "/data";
-   end Data_Dir;
-
-   procedure Open (Path : String) is
-      Name : constant String := Ada.Directories.Simple_Name (Path);
-      Base : constant String := Ada.Directories.Base_Name (Path);
-   begin
-      Opened := Tessera_Fixtures.Open (Name);
-      Expected :=
-        Tessera_Expected.Load
-          (Ada.Directories.Containing_Directory (Path)
-           & "/"
-           & Base
-           & ".expected.csv");
-   end Open;
-
-   procedure Read_Column (Name : String) is
-      Column : constant Column_Count := Find (Opened.Meta.all, Name);
-      Read   : Column_Read (Opened.Meta.Groups);
-   begin
-      for G in Read.Chunks'Range loop
-         if Column > 0 then
-            Read.Chunks (G) := Read_Chunk (Opened, G, Column);
-            if Read.Result.Ok then
-               Read.Result := Read.Chunks (G).Result;
-            end if;
-         end if;
-      end loop;
-      Last_Read := Read;
-   end Read_Column;
-
-   function First_Difference (Name : String) return Natural is
-      Column : constant Natural := Tessera_Expected.Column_Of (Expected, Name);
-      Row    : Natural := 0;
-   begin
-      for G in 1 .. Last_Read.Groups loop
-         for R in 1 .. Chunk (G).Rows loop
-            Row := Row + 1;
-            if Column = 0
-              or else Row > Natural (Expected.Rows.Length)
-              or else Render (Chunk (G), R)
-                      /= Tessera_Expected.Value (Expected, Row, Column)
-            then
-               return Row;
-            end if;
-         end loop;
-      end loop;
-      return (if Row = Natural (Expected.Rows.Length) then 0 else Row + 1);
-   end First_Difference;
-
    function Distinct_Codes return Natural is
       Total : Natural := 0;
    begin
       for G in 1 .. Last_Read.Groups loop
-         if Chunk (G).Text /= null then
-            Total := Total + Distinct (Chunk (G).Text.all);
+         if Chunk (G).Coded /= null then
+            Total := Total + Distinct (Chunk (G).Coded.all);
          end if;
       end loop;
       return Total;
    end Distinct_Codes;
+
+   function First_Wrong_Column return String is
+   begin
+      for K in 1 .. Column_Total (Open_File) loop
+         declare
+            Name : constant String :=
+              Name_Of (Tessera.Files.Column (Open_File, K));
+         begin
+            Read_Column (Name);
+            if First_Difference (Name) > 0 then
+               return Name & First_Difference (Name)'Image;
+            end if;
+         end;
+      end loop;
+      return "";
+   end First_Wrong_Column;
 
    function Type_Name (Kind : Physical_Type) return String
    is (case Kind is

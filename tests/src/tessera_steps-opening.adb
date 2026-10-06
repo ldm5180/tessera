@@ -4,7 +4,7 @@ with Fabula.Numbers;
 
 with Tessera;        use Tessera;
 with Tessera.Footer; use Tessera.Footer;
-with Tessera_Fixtures;
+with Tessera.Files;  use Tessera.Files;
 with Tessera_World;  use Tessera_World;
 
 with Tessera_Steps.Flows;
@@ -42,9 +42,11 @@ package body Tessera_Steps.Opening is
    function Number (Ctx : Step_Context; N : Positive) return Integer
    is (Fabula.Numbers.Integer_Reads.Value_Or (Fabula.Args.Int (Ctx.A, N), -1));
 
-   --  The open file's footer, by reference: a copy is megabytes.
-   function Meta return Tessera_Fixtures.Metadata_Access
-   is (Opened.Meta);
+   function Columns return Column_Count
+   is (Column_Total (Open_File));
+
+   function Schema (K : Column_Number) return Column_Info
+   is (Tessera.Files.Column (Open_File, K));
 
    --  The table's row R as the footer would state it.
    function Row_Text (Ctx : Step_Context; R : Positive) return String
@@ -55,38 +57,35 @@ package body Tessera_Steps.Opening is
        & Fabula.Args.Hash_Value (Ctx.A, R, "annotation"));
 
    function Column_Text (K : Column_Number) return String
-   is (Name_Of (Meta.Schema (K))
+   is (Name_Of (Schema (K))
        & "|"
-       & Type_Name (Meta.Schema (K).Kind)
+       & Type_Name (Schema (K).Kind)
        & "|"
-       & Note_Name (Meta.Schema (K).Note));
+       & Note_Name (Schema (K).Note));
 
    --  The first column whose name, type or annotation differs from the
    --  table's row; 0 when every one agrees and there are as many.
    function First_Difference (Ctx : Step_Context) return Natural is
       Rows : constant Natural := Fabula.Args.Row_Count (Ctx.A) - 1;
    begin
-      for K in 1 .. Natural'Min (Rows, Meta.Columns) loop
+      for K in 1 .. Natural'Min (Rows, Columns) loop
          if Row_Text (Ctx, K) /= Column_Text (K) then
             return K;
          end if;
       end loop;
-      return
-        (if Rows = Meta.Columns
-         then 0
-         else Natural'Min (Rows, Meta.Columns) + 1);
+      return (if Rows = Columns then 0 else Natural'Min (Rows, Columns) + 1);
    end First_Difference;
 
    function Group_Asked (Ctx : Step_Context) return Integer
    is (Number (Ctx, First_Number));
 
    function Group_Rows_Ok (Ctx : Step_Context) return Boolean
-   is (Group_Asked (Ctx) in 1 .. Meta.Groups
-       and then Meta.Group (Group_Asked (Ctx)).Rows
-                = Integer_64 (Number (Ctx, Second_Number)));
+   is (Group_Asked (Ctx) in 1 .. Row_Groups (Open_File)
+       and then Group_Rows (Open_File, Group_Asked (Ctx))
+                = Number (Ctx, Second_Number));
 
    function Column_Asked (Ctx : Step_Context) return Column_Count
-   is (Find (Meta.all, Fabula.Args.Word (Ctx.A, 1)));
+   is (Tessera.Files.Find (Open_File, Fabula.Args.Word (Ctx.A, 1)));
 
    function Evaluate
      (G : Guard_Kind; Ctx : Step_Context; Evt : Step_Kind) return Boolean
@@ -97,32 +96,31 @@ package body Tessera_Steps.Opening is
         (case G is
            when Always           => True,
            when File_Held        => Holding.Held,
-           when Opened_Ok        => Opened.Result.Ok,
+           when Opened_Ok        => Opened.Ok,
            when Columns_Match    => First_Difference (Ctx) = 0,
            when Counts_Match     =>
-             Meta.Rows = Integer_64 (Number (Ctx, First_Number))
-             and then Meta.Groups = Number (Ctx, Second_Number),
+             Rows (Open_File) = Integer_64 (Number (Ctx, First_Number))
+             and then Row_Groups (Open_File) = Number (Ctx, Second_Number),
            when Group_Rows_Match => Group_Rows_Ok (Ctx),
            when May_Be_Null      =>
              Column_Asked (Ctx) > 0
-             and then Meta.Schema (Column_Asked (Ctx)).Optional);
+             and then Schema (Column_Asked (Ctx)).Optional);
    end Evaluate;
 
    function Refusal_Text return String
-   is (Opened.Result.Why'Image
+   is (Opened.Why'Image
        & " (column"
-       & Opened.Result.Column'Image
+       & Opened.Column'Image
        & ", value"
-       & Opened.Result.Value'Image
+       & Opened.Value'Image
        & ")");
 
    function Column_Difference (Ctx : Step_Context) return String is
       K : constant Natural := First_Difference (Ctx);
    begin
       return
-        (if K > Meta.Columns
-         then
-           "the table lists more columns than the file's" & Meta.Columns'Image
+        (if K > Columns
+         then "the table lists more columns than the file's" & Columns'Image
          elsif K >= Fabula.Args.Row_Count (Ctx.A)
          then "the file has more columns than the table's"
          else
@@ -136,9 +134,9 @@ package body Tessera_Steps.Opening is
 
    function Counts_Text return String
    is ("the file has"
-       & Meta.Rows'Image
+       & Rows (Open_File)'Image
        & " rows in"
-       & Meta.Groups'Image
+       & Row_Groups (Open_File)'Image
        & " row groups");
 
    procedure Fail (Ctx : in out Step_Context; Why : String) is

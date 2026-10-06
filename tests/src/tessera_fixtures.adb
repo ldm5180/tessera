@@ -3,7 +3,8 @@ with Ada.Streams.Stream_IO;
 
 with Interfaces; use Interfaces;
 
-with Tessera.Columns; use Tessera.Columns;
+with Tessera.Columns;  use Tessera.Columns;
+with Tessera_Expected; use Tessera_Expected;
 
 package body Tessera_Fixtures is
 
@@ -98,36 +99,17 @@ package body Tessera_Fixtures is
       return Read;
    end Read_Chunk;
 
-   Hex_Digits : constant String := "0123456789abcdef";
-
-   --  0x and the Width hex figures of W.
-   function Hex (W : Unsigned_64; Width : Positive) return String is
-      Text : String (1 .. Width);
-      V    : Unsigned_64 := W;
-   begin
-      for K in reverse Text'Range loop
-         Text (K) := Hex_Digits (Natural (V mod 16) + 1);
-         V := V / 16;
-      end loop;
-      return "0x" & Text;
-   end Hex;
-
-   function Trim (S : String) return String
-   is (if S'Length > 0 and then S (S'First) = ' '
-       then S (S'First + 1 .. S'Last)
-       else S);
-
    function Render_Word (Column : Column_Info; W : Unsigned_64) return String
    is (case Column.Kind is
-         when Bool    => (if W /= 0 then "true" else "false"),
+         when Bool    => Truth (W /= 0),
          when Int32   =>
            (if Column.Note = Uint_32
-            then Trim (W'Image)
-            else Trim (Signed_32 (W)'Image)),
+            then Plain (W'Image)
+            else Plain (Signed_32 (W)'Image)),
          when Int64   =>
            (if Column.Note = Uint_64
-            then Trim (W'Image)
-            else Trim (Signed_64 (W)'Image)),
+            then Plain (W'Image)
+            else Plain (Signed_64 (W)'Image)),
          when Float32 => Hex (W, 8),
          when others  => Hex (W, 16));
 
@@ -137,12 +119,12 @@ package body Tessera_Fixtures is
          return
            (if Read.Text.Valid (Row)
             then Text (Read.Text.all, Read.Text.Code (Row))
-            else "<null>");
+            else Null_Text);
       end if;
       return
         (if Read.Words.Valid (Row)
          then Render_Word (Read.Column, Read.Words.Value (Row))
-         else "<null>");
+         else Null_Text);
    end Render;
 
 end Tessera_Fixtures;

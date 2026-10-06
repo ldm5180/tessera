@@ -47,4 +47,19 @@ package body Tessera_Expected is
       return 0;
    end Column_Of;
 
+   Hex_Figures : constant String := "0123456789abcdef";
+
+   function Hex (W : Interfaces.Unsigned_64; Figures : Positive) return String
+   is
+      use type Interfaces.Unsigned_64;
+      Text : String (1 .. Figures);
+      V    : Interfaces.Unsigned_64 := W;
+   begin
+      for K in reverse Text'Range loop
+         Text (K) := Hex_Figures (Natural (V mod 16) + 1);
+         V := V / 16;
+      end loop;
+      return "0x" & Text;
+   end Hex;
+
 end Tessera_Expected;
