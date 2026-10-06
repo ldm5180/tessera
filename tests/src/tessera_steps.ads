@@ -21,9 +21,14 @@ package Tessera_Steps is
       E_Check_Counts,
       E_Check_Group_Rows,
       E_Check_Nullable,
+      E_Read_Column,
+      E_Check_Values,
+      E_Check_Codes,
       --  An event no pattern names: an open posts it, and the next row's
       --  guard reads whether the file opened.
-      E_Open_Settled);
+      E_Open_Settled,
+      --  Posted by a read, as E_Open_Settled is by an open.
+      E_Read_Settled);
 
    type Hook_Kind is (Fresh_World);
 
@@ -66,7 +71,12 @@ package Tessera_Steps is
       Step ("row group {int} has {int} rows")
                                              >= E_Check_Group_Rows,
       Step ("the column {word} may hold nulls")
-                                             >= E_Check_Nullable];
+                                             >= E_Check_Nullable,
+      Step ("the column {word} is read")     >= E_Read_Column,
+      Step ("every value of {word} is as written")
+                                             >= E_Check_Values,
+      Step ("{word} has {int} distinct codes")
+                                             >= E_Check_Codes];
    --!format on
 
    Hook_Defs : constant Steps.Hook_Table := [Before >= Fresh_World];

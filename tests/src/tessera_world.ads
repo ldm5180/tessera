@@ -2,6 +2,7 @@ with Fabula.Frames;
 
 with Tessera;          use Tessera;
 with Tessera.Footer;   use Tessera.Footer;
+with Tessera_Expected;
 with Tessera_Fixtures; use Tessera_Fixtures;
 
 --  What the features read that is not per scenario, and what is too big
@@ -15,8 +16,33 @@ package Tessera_World is
    --  gave.
    Opened : Opened_File;
 
-   --  Opens the file at Path into Opened.
+   --  What the file opened should read back as: its .expected.csv.
+   Expected : Tessera_Expected.Table;
+
+   --  Opens the file at Path into Opened, and loads Expected.
    procedure Open (Path : String);
+
+   type Chunk_Reads is array (Group_Number range <>) of Chunk_Read;
+
+   --  The column last read: one chunk read a row group, and the first
+   --  refusal among them.
+   type Column_Read (Groups : Group_Count := 0) is record
+      Chunks : Chunk_Reads (1 .. Groups);
+      Result : Outcome;
+   end record;
+
+   Last_Read : Column_Read;
+
+   --  Reads the column Name, every row group of it, into Last_Read.
+   procedure Read_Column (Name : String);
+
+   --  The first row (counting across row groups, from 1) of Last_Read
+   --  whose value differs from Expected's column Name, or 0.
+   function First_Difference (Name : String) return Natural;
+
+   --  How many distinct codes the rows of Last_Read hold, summed over its
+   --  row groups.
+   function Distinct_Codes return Natural;
 
    --  The Parquet name of a physical type: BOOLEAN, INT32, ...
    function Type_Name (Kind : Physical_Type) return String;

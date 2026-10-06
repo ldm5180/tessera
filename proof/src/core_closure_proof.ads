@@ -1,4 +1,5 @@
 with Tessera;
+with Tessera.Columns;
 with Tessera.Footer;
 with Tessera.Hybrid;
 with Tessera.Pages;

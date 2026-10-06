@@ -38,6 +38,7 @@ is
       Nested_Schema,
       Unsupported_Codec,
       Unsupported_Encoding,
+      Unsupported_Page_Version,
       Unsupported_Type,
       Encrypted,
       Too_Large);
