@@ -70,6 +70,13 @@ jobs:
         # scenario.  Both are fully offline.
         run: alr --non-interactive test
 
+      - name: Run the Gherkin features, both modes, report in the log
+        # alr test keeps its output in a log file, so the scenarios run
+        # again here, where they show in the CI log; make features also
+        # checks the summary line, which alr test cannot, since fabula
+        # exits 0 for a missing path.
+        run: make features
+
       - name: Build the benchmark
         # `make bench` needs a real file, which CI does not have; building
         # it keeps it compiling.

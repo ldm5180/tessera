@@ -75,6 +75,10 @@ make ci           # every gate
 make bench TESSERA_FILE=<path> [TESSERA_COLUMNS="a b c"]
 ```
 
+What tessera does is stated as Gherkin features in
+[tests/features](tests/features), and published as living documentation
+at <https://ldm5180.github.io/tessera/> from every push to main.
+
 `make bench` reads the named columns (every column when none is named)
 of a local file and prints rows, megabytes and seconds per column; it
 is how tessera was measured against a real file, which stays outside
