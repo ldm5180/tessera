@@ -94,7 +94,7 @@ validation:
 ##             a floating-point value
 no-float:
 	@if grep -nwE 'Float|Long_Float|Long_Long_Float|digits|Elementary_Functions' \
-	    $(SOURCES); then \
+	    $(SOURCES) /dev/null; then \
 	  echo 'no-float: a floating-point type is named above'; exit 1; \
 	else echo 'no-float: no floating-point type in any source'; fi
 
