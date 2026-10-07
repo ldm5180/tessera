@@ -69,6 +69,14 @@ wire rules of the subset, is `docs/tessera-plan.md`.
   function of its bytes; the consumer runs chunks in parallel.
 - Never commit a real data file.
 
+## Dependency injection
+
+No package-level variable, set-once cell or singleton, in the core or
+the app layer.  What a subprogram needs arrives as a parameter, a
+generic formal, or a field of an object it was handed (a file, a
+column, a cursor); what it produces leaves the same way.  Constants
+are fine.  It is what lets a consumer decode chunks on many tasks.
+
 ## SPARK
 
 - Every `src/core` unit carries `SPARK_Mode`. After any core change,
