@@ -392,8 +392,8 @@ end;
   states the wire rules for each layer; added the consumer's view
   (section 2), the fixture table, the Do-not list, and a byte-level
   RED assertion for each decoder.
-- **Iteration 3 (against the retrotester files in
-  `~/git/prov2025/input/202609-r` and retrotester's writer):**
+- **Iteration 3 (against the retrotester files in the legacy
+  backtester's input folder (202609-r) and retrotester's writer):**
   measured rather than assumed: codec Snappy on every one of 462
   column chunks; encodings PLAIN, RLE, RLE_DICTIONARY on every
   chunk; a dictionary page on every chunk; no nesting; maximum
